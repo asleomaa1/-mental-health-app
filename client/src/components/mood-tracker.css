@@ -1,0 +1,138 @@
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { MoodEntry, InsertMoodEntry } from "@shared/schema";
+import { format } from "date-fns";
+import { motion } from "framer-motion";
+
+const MOODS = {
+  great: { emoji: "🤩", label: "Great", color: "bg-green-100" },
+  good: { emoji: "😊", label: "Good", color: "bg-emerald-100" },
+  okay: { emoji: "😐", label: "Okay", color: "bg-yellow-100" },
+  down: { emoji: "😔", label: "Down", color: "bg-orange-100" },
+  awful: { emoji: "😢", label: "Awful", color: "bg-red-100" },
+} as const;
+
+export function MoodTracker() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedMood, setSelectedMood] = useState<keyof typeof MOODS | null>(null);
+  const [note, setNote] = useState("");
+
+  const { data: moodEntries } = useQuery<MoodEntry[]>({
+    queryKey: ["/api/mood-entries"],
+  });
+
+  const createMoodEntryMutation = useMutation({
+    mutationFn: async (data: InsertMoodEntry) => {
+      const res = await apiRequest("POST", "/api/mood-entries", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to save mood entry");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mood-entries"] });
+      toast({
+        title: "Mood tracked! 🎉",
+        description: "Your mood has been recorded successfully.",
+      });
+      setSelectedMood(null);
+      setNote("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to save mood",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!selectedMood) {
+      toast({
+        title: "Please select a mood",
+        description: "Click on an emoji to select your current mood.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createMoodEntryMutation.mutate({
+      mood: selectedMood,
+      note: note || undefined,
+    });
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-6 space-y-4">
+        <h3 className="text-lg font-semibold">How are you feeling?</h3>
+        
+        <div className="grid grid-cols-5 gap-2">
+          {Object.entries(MOODS).map(([mood, { emoji, label, color }]) => (
+            <motion.button
+              key={mood}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSelectedMood(mood as keyof typeof MOODS)}
+              className={`p-4 rounded-lg text-center transition-colors ${
+                selectedMood === mood ? color : "bg-muted"
+              }`}
+            >
+              <div className="text-2xl mb-1">{emoji}</div>
+              <div className="text-xs font-medium">{label}</div>
+            </motion.button>
+          ))}
+        </div>
+
+        <Textarea
+          placeholder="Would you like to add a note about how you're feeling? (optional)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="h-24"
+        />
+
+        <Button 
+          onClick={handleSubmit}
+          disabled={createMoodEntryMutation.isPending}
+          className="w-full"
+        >
+          {createMoodEntryMutation.isPending ? "Saving..." : "Save Mood"}
+        </Button>
+
+        {moodEntries && moodEntries.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-sm font-medium mb-2">Recent Moods</h4>
+            <div className="space-y-2">
+              {moodEntries.slice(0, 5).map((entry) => (
+                <div
+                  key={entry.id}
+                  className={`p-3 rounded-lg ${MOODS[entry.mood as keyof typeof MOODS].color}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">
+                      {MOODS[entry.mood as keyof typeof MOODS].emoji}
+                    </span>
+                    <span className="text-sm font-medium">
+                      {format(new Date(entry.timestamp), "PPp")}
+                    </span>
+                  </div>
+                  {entry.note && (
+                    <p className="text-sm mt-1 text-muted-foreground">{entry.note}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

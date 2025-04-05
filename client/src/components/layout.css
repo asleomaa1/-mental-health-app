@@ -1,0 +1,85 @@
+import { Link, useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Heart, Calendar, BookOpen, LogOut, User, MessageCircle } from "lucide-react";
+
+export function Layout({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  const { user, logoutMutation } = useAuth();
+
+  const navigation = [
+    { name: "Home", href: "/", icon: Heart },
+    { name: "Chat", href: "/chat", icon: MessageCircle },
+    { name: "Book", href: "/appointments", icon: Calendar },
+    { name: "Resources", href: "/resources", icon: BookOpen },
+  ];
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="border-b px-4 h-14 flex items-center justify-between fixed top-0 w-full bg-background z-50">
+        <Link href="/">
+          <span className="text-lg font-semibold text-primary">
+            Cardiff Mental Health
+          </span>
+        </Link>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <User className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {user && (
+              <>
+                <DropdownMenuItem disabled>
+                  Signed in as {user.username}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => logoutMutation.mutate()}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </header>
+
+      <main className="flex-1 pt-14 pb-16">
+        {children}
+      </main>
+
+      <nav className="fixed bottom-0 left-0 right-0 border-t bg-background">
+        <div className="flex justify-around">
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link key={item.name} href={item.href}>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex flex-col items-center gap-1 h-16 rounded-none",
+                    location === item.href && "bg-muted"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-xs">{item.name}</span>
+                </Button>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}

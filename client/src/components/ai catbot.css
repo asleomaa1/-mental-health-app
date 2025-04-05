@@ -1,0 +1,229 @@
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { Send } from "lucide-react";
+
+type Message = {
+  id: string;
+  content: string;
+  sender: "user" | "bot";
+  options?: string[];
+};
+
+const INITIAL_MESSAGE = {
+  id: "welcome",
+  content: "Hi there! I'm here to support your mental wellbeing. 💙\n\nLet's start with a short reflection - how are you feeling right now? Take a moment to check in with yourself.",
+  sender: "bot",
+  options: [
+    "I'm feeling anxious 😰",
+    "I'm feeling stressed 😓",
+    "I'm feeling down 😔",
+    "I need someone to talk to 💭"
+  ],
+} as const;
+
+const RESPONSES = {
+  anxiety: {
+    message: "Thank you for sharing that. Let's understand your anxiety better together.\n\n🤔 What's most contributing to your anxiety right now?",
+    options: [
+      "Academic pressure 📚",
+      "Social situations 👥",
+      "Future concerns 🔮",
+      "Physical symptoms 🫀"
+    ],
+  },
+  academicStress: {
+    message: "I understand academic pressure can be overwhelming. Let's break this down:\n\n• Are you struggling with a specific subject?\n• Feeling behind on assignments?\n• Worried about upcoming exams?\n\nWhat's your main concern?",
+    options: [
+      "Need study strategies 📚",
+      "Time management help ⏰",
+      "Talk to academic advisor 👤",
+      "Try stress relief first 🧘‍♀️"
+    ],
+  },
+  professional: {
+    message: "Seeking professional support is a positive and brave step. Let's connect you with the right help.\n\nWould you prefer:",
+    options: [
+      "Book counseling session 📅",
+      "View counselor profiles 👤",
+      "Get urgent support 🆘",
+      "Learn about therapy types 📋"
+    ],
+  },
+  urgent: {
+    message: "I hear you're going through a difficult time. Your wellbeing is important, and immediate support is available:\n\n🆘 Crisis Helpline: 0800 132 737\n👥 Student Counseling: 029 2087 4966\n🏥 Emergency: 999\n\nWould you like me to:",
+    options: [
+      "Book urgent session 📅",
+      "Try immediate coping tools 🧘‍♀️",
+      "Connect with support team 👥"
+    ],
+  },
+  selfHelp: {
+    message: "Self-help resources can be really valuable. Let's find something that resonates with you:\n\n• Quick coping strategies\n• Guided exercises\n• Educational materials\n• Progress tracking tools",
+    options: [
+      "Try guided meditation 🧘‍♀️",
+      "Read expert articles 📚",
+      "Use mood tracker 📊",
+      "Get personalized tips 💡"
+    ],
+  },
+  meditation: {
+    message: "Let's try a calming exercise together. Find a comfortable position and I'll guide you through it:\n\n1. Breathe in slowly (4 counts)\n2. Hold gently (4 counts)\n3. Release slowly (6 counts)\n4. Pause (2 counts)\n\nReady to begin?",
+    options: [
+      "Start guided exercise 🧘‍♀️",
+      "Try different technique ↩️",
+      "Learn more first 📖"
+    ],
+  },
+  reflection: {
+    message: "Sometimes talking about our feelings helps us understand them better. Could you tell me more about:\n\n• When these feelings started?\n• What makes them better or worse?\n• What support has helped before?",
+    options: [
+      "Share more thoughts 💭",
+      "Try coping strategies 💪",
+      "Get professional help 👥",
+      "Explore resources 📚"
+    ],
+  }
+};
+
+export function ChatBot() {
+  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const addMessage = (content: string, sender: "user" | "bot", options?: string[]) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: Math.random().toString(), content, sender, options },
+    ]);
+  };
+
+  const handleOptionClick = (option: string) => {
+    addMessage(option, "user");
+
+    if (option.toLowerCase().includes("urgent") || option.toLowerCase().includes("crisis")) {
+      addMessage(RESPONSES.urgent.message, "bot", RESPONSES.urgent.options);
+      return;
+    }
+
+    if (option.toLowerCase().includes("academic") || option.toLowerCase().includes("study")) {
+      addMessage(RESPONSES.academicStress.message, "bot", RESPONSES.academicStress.options);
+      return;
+    }
+
+    if (option.toLowerCase().includes("professional") || option.toLowerCase().includes("counseling") || option.toLowerCase().includes("session")) {
+      addMessage(RESPONSES.professional.message, "bot", RESPONSES.professional.options);
+      return;
+    }
+
+    if (option.toLowerCase().includes("meditation") || option.toLowerCase().includes("exercise")) {
+      addMessage(RESPONSES.meditation.message, "bot", RESPONSES.meditation.options);
+      return;
+    }
+
+    if (option.toLowerCase().includes("self-help") || option.toLowerCase().includes("resources")) {
+      addMessage(RESPONSES.selfHelp.message, "bot", RESPONSES.selfHelp.options);
+      return;
+    }
+
+    if (option.toLowerCase().includes("anxious")) {
+      addMessage(RESPONSES.anxiety.message, "bot", RESPONSES.anxiety.options);
+    } else if (option.toLowerCase().includes("share") || option.toLowerCase().includes("thoughts")) {
+      addMessage(RESPONSES.reflection.message, "bot", RESPONSES.reflection.options);
+    } else {
+      addMessage("I'm here to support you. Let's explore what might help you feel better right now.", "bot",
+        ["Try guided exercise 🧘‍♀️", "Talk to counselor 👥", "Explore resources 📚", "Share more 💭"]);
+    }
+  };
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    addMessage(input, "user");
+    setInput("");
+
+    const lowercaseInput = input.toLowerCase();
+    if (lowercaseInput.includes("suicid") || lowercaseInput.includes("kill") || lowercaseInput.includes("end my life")) {
+      addMessage(RESPONSES.urgent.message, "bot", RESPONSES.urgent.options);
+    } else if (lowercaseInput.includes("anxious") || lowercaseInput.includes("anxiety")) {
+      addMessage(RESPONSES.anxiety.message, "bot", RESPONSES.anxiety.options);
+    } else if (lowercaseInput.includes("exam") || lowercaseInput.includes("study") || lowercaseInput.includes("assignment")) {
+      addMessage(RESPONSES.academicStress.message, "bot", RESPONSES.academicStress.options);
+    } else if (lowercaseInput.includes("help") || lowercaseInput.includes("support")) {
+      addMessage(RESPONSES.professional.message, "bot", RESPONSES.professional.options);
+    } else {
+      addMessage("I hear you. Let's understand your feelings better. Would you like to:", "bot",
+        ["Share more about it 💭", "Try coping strategies 🧘‍♀️", "Get professional support 👥", "Explore resources 📚"]);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-8rem)]">
+      <div 
+        ref={scrollRef}
+        className="flex-1 p-4 overflow-y-auto"
+      >
+        <div className="space-y-4">
+          {messages.map((message) => (
+            <div key={message.id}>
+              <div
+                className={cn(
+                  "flex",
+                  message.sender === "user" ? "justify-end" : "justify-start"
+                )}
+              >
+                <div
+                  className={cn(
+                    "rounded-2xl px-4 py-2 max-w-[85%] break-words",
+                    message.sender === "user"
+                      ? "bg-primary text-primary-foreground rounded-br-none"
+                      : "bg-muted rounded-bl-none"
+                  )}
+                >
+                  {message.content}
+                </div>
+              </div>
+              {message.options && message.sender === "bot" && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {message.options.map((option) => (
+                    <Button
+                      key={option}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOptionClick(option)}
+                      className="rounded-full"
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <form onSubmit={handleSend} className="p-4 border-t bg-background">
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1 rounded-full"
+          />
+          <Button type="submit" size="icon" className="rounded-full">
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
